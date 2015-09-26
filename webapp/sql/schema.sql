@@ -1,3 +1,5 @@
+SET GLOBAL key_buffer_size=2684354560;
+
 -- DROP TABLE IF EXISTS users;
 CREATE TABLE IF NOT EXISTS users (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -21,6 +23,8 @@ CREATE TABLE IF NOT EXISTS relations (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY `friendship` (`one`,`another`)
 ) DEFAULT CHARSET=utf8;
+ALTER TABLE relations ADD INDEX (one);
+ALTER TABLE relations ADD INDEX (another);
 
 -- DROP TABLE IF EXISTS profiles;
 CREATE TABLE IF NOT EXISTS profiles (
@@ -43,6 +47,7 @@ CREATE TABLE IF NOT EXISTS entries (
   KEY `user_id` (`user_id`,`created_at`),
   KEY `created_at` (`created_at`)
 ) DEFAULT CHARSET=utf8mb4;
+ALTER TABLE entries ADD INDEX (created_at);
 
 -- DROP TABLE IF EXISTS comments;
 CREATE TABLE IF NOT EXISTS comments (
@@ -54,6 +59,7 @@ CREATE TABLE IF NOT EXISTS comments (
   KEY `entry_id` (`entry_id`),
   KEY `created_at` (`created_at`)
 ) DEFAULT CHARSET=utf8mb4;
+ALTER TABLE comments ADD INDEX (entry_id,user_id);
 
 -- DROP TABLE IF EXISTS footprints;
 CREATE TABLE IF NOT EXISTS footprints (
@@ -62,3 +68,4 @@ CREATE TABLE IF NOT EXISTS footprints (
   `owner_id` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) DEFAULT CHARSET=utf8;
+ALTER TABLE footprints ADD INDEX (user_id,owner_id);
