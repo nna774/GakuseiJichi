@@ -180,24 +180,6 @@ LIMIT 10
 SQL
     comments_for_me = db.xquery(comments_for_me_query, current_user[:id])
 
-    entries_of_friends = []
-    db.query('SELECT * FROM entries ORDER BY created_at DESC LIMIT 1000').each do |entry|
-      next unless is_friend?(entry[:user_id])
-      entry[:title] = entry[:body].split(/\n/).first
-      entries_of_friends << entry
-      break if entries_of_friends.size >= 10
-    end
-
-    comments_of_friends = []
-    db.query('SELECT * FROM comments ORDER BY created_at DESC LIMIT 1000').each do |comment|
-      next unless is_friend?(comment[:user_id])
-      entry = db.xquery('SELECT * FROM entries WHERE id = ?', comment[:entry_id]).first
-      entry[:is_private] = (entry[:private] == 1)
-      next if entry[:is_private] && !permitted?(entry[:user_id])
-      comments_of_friends << comment
-      break if comments_of_friends.size >= 10
-    end
-
     friends_query = 'SELECT * FROM relations WHERE one = ? OR another = ? ORDER BY created_at DESC'
     friends_map = {}
     db.xquery(friends_query, current_user[:id], current_user[:id]).each do |rel|
@@ -205,6 +187,23 @@ SQL
       friends_map[rel[key]] ||= rel[:created_at]
     end
     friends = friends_map.map{|user_id, created_at| [user_id, created_at]}
+    friend_ids = friends.map{ |friend| friend[0] }
+
+    entries_of_friends = []
+    db.xquery('SELECT * FROM entries WHERE user_id IN (?) ORDER BY created_at DESC LIMIT 10', friend_ids).each do |entry|
+      entry[:title] = entry[:body].split(/\n/).first
+      entries_of_friends << entry
+    end
+
+    comments_of_friends_query = <<SQL
+SELECT c.id AS id, c.entry_id AS entry_id, c.user_id AS user_id, c.comment AS comment, c.created_at AS created_at
+FROM comments c
+JOIN entries e ON c.entry_id = e.id
+WHERE (c.user_id IN (?)) AND (e.private != 1 OR (e.private = 1 AND e.user_id IN (?)))
+ORDER BY c.created_at DESC
+LIMIT 10
+SQL
+    comments_of_friends = db.xquery(comments_of_friends_query, friend_ids, friend_ids)
 
     query = <<SQL
 SELECT user_id, owner_id, DATE(created_at) AS date, MAX(created_at) AS updated
