@@ -17,6 +17,7 @@ module Isucon5
 end
 
 class Isucon5::WebApp < Sinatra::Base
+  # use Rack::Lineprof, profile: 'entries.erb'
   use Rack::Session::Cookie
   set :erb, escape_html: true
   set :public_folder, File.expand_path('../../static', __FILE__)
@@ -280,9 +281,26 @@ SQL
             else
               'SELECT * FROM entries WHERE user_id = ? AND private=0 ORDER BY created_at DESC LIMIT 20'
             end
+
     entries = db.xquery(query, owner[:id])
       .map{ |entry| entry[:is_private] = (entry[:private] == 1); entry[:title], entry[:content] = entry[:body].split(/\n/, 2); entry }
     mark_footprint(owner[:id])
+
+    query = <<SQL
+SELECT entry_id, count(*) AS count from comments
+WHERE entry_id IN (?)
+GROUP BY entry_id
+SQL
+
+    entry_comments_count = db.xquery(query, entries.map {|entry| entry[:id]})
+
+    entry_id_to_comment_count = entry_comments_count.reduce({}) {|prev, value| prev[value[:entry_id]] = value[:count]; prev }
+
+    entries = entries.map {|entry|
+      entry[:comment_count] = entry_id_to_comment_count[entry[:id]] || 0
+      entry
+    }
+
     erb :entries, locals: { owner: owner, entries: entries, myself: (current_user[:id] == owner[:id]) }
   end
 
