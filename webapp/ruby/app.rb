@@ -88,7 +88,8 @@ SQL
     end
 
     def get_user(user_id)
-      user = db.xquery('SELECT * FROM users WHERE id = ?', user_id).first
+      Thread.current[:users] ||= db.query('SELECT * FROM users').map { |user| [user[:id], user] }.to_h
+      user = Thread.current[:users][user_id]
       raise Isucon5::ContentNotFound unless user
       user
     end
@@ -196,7 +197,7 @@ SQL
     end
 
     comments_of_friends_query = <<SQL
-SELECT c.id AS id, c.entry_id AS entry_id, c.user_id AS user_id, c.comment AS comment, c.created_at AS created_at
+SELECT c.id AS id, c.entry_id AS entry_id, c.user_id AS user_id, c.comment AS comment, c.created_at AS created_at, e.user_id AS entry_user_id
 FROM comments c
 JOIN entries e ON c.entry_id = e.id
 WHERE (c.user_id IN (?)) AND (e.private != 1 OR (e.private = 1 AND e.user_id IN (?)))
@@ -265,6 +266,9 @@ SQL
       args.unshift(current_user[:id])
     end
     db.xquery(query, *args)
+
+    Thread.current[:users] = nil
+
     redirect "/profile/#{params['account_name']}"
   end
 
