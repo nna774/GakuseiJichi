@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS comments (
   KEY `entry_id` (`entry_id`),
   KEY `created_at` (`created_at`)
 ) DEFAULT CHARSET=utf8mb4;
-ALTER TABLE comments ADD INDEX (entry_id,user_id);
+ALTER TABLE comments ADD INDEX (user_id);
 
 -- DROP TABLE IF EXISTS footprints;
 CREATE TABLE IF NOT EXISTS footprints (
